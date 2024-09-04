@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Location Tracker</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* Basic Formatting */
+        :root {
+            --purp: #6c38de;
+            --lightpurp: #ac8dff;
+        }
+
+        * {
+            padding: 0;
+            margin: 0;
+            box-sizing: border-box;
+            transition: all 0.25s cubic-bezier(.37, 0, .45, .99);
+        }
+
+        *::before,
+        *::after {
+            box-sizing: inherit;
+        }
+
+        img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa, #c3cfe2);
+            color: #333;
+            text-align: center;
+            padding: 20px;
+            line-height: 1.75;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        #container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+
+        button {
+            background: #007bff;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px;
+            font-size: 16px;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        button:hover {
+            background: #0056b3;
+            transform: scale(1.05);
+        }
+
+        button:active {
+            background: #003d7a;
+        }
+
+        #locationInfo {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            font-size: 18px;
+        }
+
+        #locationInfo p {
+            margin: 10px 0;
+        }
+
+        #mapLink a {
+            color: #007bff;
+            text-decoration: none;
+        }
+
+        #mapLink a:hover {
+            text-decoration: underline;
+        }
+
+        /* GPS Hero */
+        .gps-bg {
+            background-color: var(--lightpurp);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+            z-index: -1;
+            perspective: 500px;
+        }
+
+        .gps-bg::after {
+            content: '';
+            background-color: #fafafa;
+            position: absolute;
+            width: 200%;
+            height: 5em;
+            bottom: 0;
+            transform: skewY(-2deg);
+        }
+
+        .gps-bg__guts {
+            position: absolute;
+            transform: rotateX(45deg);
+            width: calc(100% + 1000px); /* Extra space to overflow the edges with filled map */
+            height: 100%;
+            left: -500px; /* Re-center the container */
+        }
+
+        .gps-bg__bg {
+            height: 1300px;
+            background-image: url(http://www.rastrac.com/hubfs/roads.svg);
+            background-position: 50%;
+            background-size: 25%;
+            position: absolute;
+            top: -162px; /* Hide the empty top reset by moving the object up */
+            width: 100%;
+            transform: translateY(-650px);
+            animation: driving 10000ms linear 0ms infinite;
+        }
+
+        .gps-bg__route {
+            width: 2em;
+            background-color: #fff;
+            position: absolute;
+            top: -162px;
+            bottom: -162px;
+            left: 50%;
+            transform: translateX(-50%);
+            box-shadow: 0 0 13px 5px rgba(108, 56, 222, 0.25); /* Darkened version of --purp */
+        }
+
+        .gps-bg__route::after {
+            content: '';
+            width: 60%;
+            background-color: var(--purp);
+            position: absolute;
+            top: 0;
+            bottom: 35%;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .gps-bg__fade {
+            background-image: linear-gradient(to bottom, var(--lightpurp) 10%, rgba(172, 141, 255, 0) 100%);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 60%;
+            z-index: 1;
+        }
+
+        .gps-bg__marker {
+            height: 6em;
+            width: 6em;
+            background-color: #fff;
+            border-radius: 100%;
+            border-right: 1px solid #ddd;
+            border-bottom: 3px solid #ddd;
+            border-left: 1px solid #ddd;
+            position: absolute;
+            top: 60%;
+            left: 50%;
+            transform: translateX(-50%);
+            box-shadow: 0 0.125em 10px 3px rgba(108, 56, 222, 0.25); /* Darkened version of --purp */
+        }
+
+        .gps-bg__marker::after {
+            content: '';
+            border-left: 1.5em solid transparent;
+            border-right: 1.5em solid transparent;
+            border-bottom: 3em solid var(--purp);
+            position: absolute;
+            top: 20%;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        @keyframes driving {
+            0% {
+                transform: translateY(-650px);
+            }
+            100% {
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="gps-bg">
+        <div class="gps-bg__guts">
+            <div class="gps-bg__bg"></div>
+            <div class="gps-bg__route"></div>
+            <div class="gps-bg__marker"></div>
+        </div>
+    </div>
+
+    <div id="container">
+        <h1>Real-Time Location Tracker</h1>
+        <button id="startTracking"><i class="fas fa-play"></i> Start Tracking</button>
+        <button id="stopTracking"><i class="fas fa-stop"></i> Stop Tracking</button>
+        <div id="locationInfo">
+            <p id="latitude">Latitude: <span>N/A</span></p>
+            <p id="longitude">Longitude: <span>N/A</span></p>
+            <p id="mapLink">Map: <span>N/A</span></p>
+        </div>
+    </div>
+
+    <script>
+        const startButton = document.getElementById('startTracking');
+        const stopButton = document.getElementById('stopTracking');
+        const latitudeElem = document.getElementById('latitude').querySelector('span');
+        const longitudeElem = document.getElementById('longitude').querySelector('span');
+        const mapLinkElem = document.getElementById('mapLink').querySelector('span');
+
+        let tracking = false;
+        let watchId;
+
+        // Function to update location info on the page
+        function updateLocation(latitude, longitude) {
+            latitudeElem.textContent = latitude;
+            longitudeElem.textContent = longitude;
+            mapLinkElem.innerHTML = `<a href="https://www.google.com/maps?q=${latitude},${longitude}" target="_blank">View on Google Maps</a>`;
+        }
+
+        // Function to send location data to the server
+        function sendLocation(latitude, longitude) {
+            fetch('/send_location', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ latitude, longitude }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Location sent:', data);
+            })
+            .catch(error => {
+                console.error('Error sending location:', error);
+            });
+        }
+
+        // Start tracking location
+        startButton.addEventListener('click', () => {
+            if (navigator.geolocation) {
+                tracking = true;
+                watchId = navigator.geolocation.watchPosition(position => {
+                    const latitude = position.coords.latitude;
+                    const longitude = position.coords.longitude;
+                    updateLocation(latitude, longitude);
+                    sendLocation(latitude, longitude);
+                }, error => {
+                    console.error('Error getting location:', error);
+                });
+            } else {
+                alert('Geolocation is not supported by this browser.');
+            }
+        });
+
+        // Stop tracking location
+        stopButton.addEventListener('click', () => {
+            if (tracking) {
+                navigator.geolocation.clearWatch(watchId);
+                tracking = false;
+                updateLocation('N/A', 'N/A');
+                mapLinkElem.textContent = 'N/A';
+            }
+        });
+    </script>
+</body>
+</html>
